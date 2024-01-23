@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  hero-db:
+    image: mysql
+    container_name: hero-db
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=hero
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      start_period: 30s
+      timeout: 20s
+      retries: 10
+    networks: 
+      - hero-network
+    ports: 
+      - 8080:3306
+  hero-back:
+    build: 
+      context: ./hero-back
+      args:
+        JAR_FILE: ./hero.jar
+    image: spring
+    container_name: hero-back
+    restart: always
+    networks:
+      - hero-network
+    ports: 
+      - 8081:8080
+    depends_on:
+      hero-db:
+        condition: service_healthy
+  hero-front:
+    image: nginx
+    container_name: hero-front
+    networks:
+      - hero-network
+    ports:
+      - "8082:80"
+    volumes:
+      - ./hero-front/statics:/usr/share/nginx/html
+      - ./hero-front/conf:/etc/nginx/conf.d
+    restart: always
+    depends_on:
+      - hero-back
+networks:
+  hero-network:
+    name: hero-network
